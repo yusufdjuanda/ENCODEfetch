@@ -5,6 +5,6 @@ from .core import (
     write_nfcore_sheet,
     write_snakemake_sheet,
 )
-from .postprocess import collapse_fastq_pairs
+from .postprocess import collapse_fastq_pairs, filter_control_presence
 
 __version__ = "0.5.0"

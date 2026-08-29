@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added `--control-presence` filter with `any`, `present`, and `none` modes to retain cases based on whether ENCODE metadata records a control relationship for the experiment.
+- Added pure post-processing function `filter_control_presence` in `encodefetch.postprocess`.
+- Automatically retained matched control rows for all surviving cases while dropping orphaned controls.
+
 ## 0.5.0
 
 - Added accession-file parsing for `--accessions`.

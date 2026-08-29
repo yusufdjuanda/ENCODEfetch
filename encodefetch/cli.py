@@ -13,6 +13,7 @@ from .core import (
     write_nfcore_sheet,
     write_snakemake_sheet,
 )
+from .postprocess import filter_control_presence
 
 from . import __version__
 
@@ -39,7 +40,7 @@ click.rich_click.OPTION_GROUPS = {
         },
         {
             "name": "Output options",
-            "options": ["--outdir", "--nfcore", "--snakemake", "--control-strategy"],
+            "options": ["--outdir", "--nfcore", "--snakemake", "--control-strategy", "--control-presence"],
         },
         {
             "name": "Download options",
@@ -144,6 +145,18 @@ def parse_accessions_input(accessions: str) -> tuple[list[str], str]:
               show_default=True,
               help="Samplesheet strategy for multiple controls.")
 
+@click.option("--control-presence",
+              "control_presence",
+              type=click.Choice(["any", "present", "none"], case_sensitive=False),
+              default="any",
+              show_default=True,
+              help=(
+                  "Filter cases by whether ENCODE metadata records a control relationship. "
+                  "'any': keep all (default). "
+                  "'present': keep only cases whose ENCODE metadata contains a linked control experiment. "
+                  "'none': keep only cases with no linked control."
+              ))
+
 @click.version_option(version=__version__, prog_name="ENCODEfetch",
                       message="%(prog)s, version %(version)s")
 
@@ -167,6 +180,7 @@ def main(accessions,
          nfcore, 
          snakemake, 
          control_strategy,
+         control_presence,
          max_retries, 
          chunk_size
          ):
@@ -209,6 +223,14 @@ def main(accessions,
 
     if "file_format" in df.columns and df["file_format"].astype(str).str.lower().eq("fastq").any():
         df = collapse_fastq_pairs(df)
+
+    if control_presence != "any":
+        df = filter_control_presence(df, control_presence)
+        if df.empty:
+            click.echo(
+                f"No experiments remain after applying --control-presence={control_presence}.", err=True
+            )
+            return
 
     manifest_tsv = outdir / "manifest.tsv"
     meta_jsonl = outdir / "metadata.jsonl"

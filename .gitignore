@@ -138,6 +138,6 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 scripts/
-test_*
-!tests/test_docs_examples.py
+/test_*
+!tests/
 manuscript/

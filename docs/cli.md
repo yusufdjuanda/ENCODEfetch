@@ -53,12 +53,19 @@ encodefetch \
 | `--nfcore` | Write an nf-core samplesheet for the selected assay. |
 | `--snakemake` | Write a Snakemake samplesheet for the selected assay. |
 | `--control-strategy` | Choose `all`, `pool`, `best`, or `first` for multiple controls in samplesheets. |
+| `--control-presence` | Filter cases by whether ENCODE metadata records a control relationship: `any` (default), `present`, or `none`. |
 | `--dry-run` | Deprecated alias for `--metadata-only`. |
 | `--version` | Show the installed version. |
 
 ## Notes
 
 The manifest always preserves all matched controls in `matched_control_experiments`. When ENCODE provides file-level control relationships, ENCODEfetch stores normalized control file accessions in `controlled_by_files`.
+
+`--control-presence` filters cases based only on whether ENCODE metadata records a control relationship for the experiment (`matched_control_experiments`). It does not depend on `--file-type`, `--assembly`, or `--status`, so an experiment linked to a control is treated as having a control even if none of that control's files match the current file filters:
+
+- `any`: keep all cases and include matched controls when available (default).
+- `present`: keep only cases whose ENCODE metadata contains at least one linked control experiment.
+- `none`: keep only cases with no linked control (e.g. for control-free assays like RNA-seq).
 
 `--control-strategy` changes only samplesheet output:
 
