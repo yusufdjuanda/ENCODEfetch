@@ -6,6 +6,22 @@ import requests
 ENCODE_BASE = "https://www.encodeproject.org"
 HEADERS = {"accept": "application/json"}
 
+
+class EncodeNotFoundError(Exception):
+    """A specific ENCODE resource (e.g. an experiment accession) doesn't exist.
+
+    Distinct from a search that legitimately matched zero results (which
+    ``encode_get`` returns normally, not as an error) and from other HTTP
+    failures (which still raise ``requests.HTTPError`` - server errors,
+    auth failures, etc. are not "not found" and callers shouldn't silently
+    skip them the way they can skip a bad accession).
+    """
+
+    def __init__(self, path: str):
+        self.path = path
+        super().__init__(f"Not found on ENCODE: {path}")
+
+
 def encode_get(path_or_url: str,
                params: Optional[list | dict] = None,
                auth=None,
@@ -31,6 +47,24 @@ def encode_get(path_or_url: str,
         sep = '&' if '?' in prepped.url else '?'
         prepped.url = f"{prepped.url}{sep}{raw_query}"
     r = s.send(prepped, timeout=timeout)
+
+    if r.status_code == 404:
+        # ENCODE's /search/ endpoint returns HTTP 404 even for a perfectly
+        # valid query that just matches zero experiments (confirmed: same
+        # 404 + "No results found" body whether the filter is valid-but-
+        # unmatched or nonsense - ENCODE doesn't distinguish). A response
+        # shaped like a search result (has "@graph") is that case: return
+        # it as-is so callers see an empty result, not a crash. Anything
+        # else at 404 (e.g. /experiments/{accession}/ for an accession that
+        # doesn't exist) is a genuine "not found".
+        try:
+            data = r.json()
+        except ValueError:
+            data = None
+        if isinstance(data, dict) and "@graph" in data:
+            return data
+        raise EncodeNotFoundError(path_or_url)
+
     r.raise_for_status()
     return r.json()
 

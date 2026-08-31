@@ -4,7 +4,7 @@ from typing import Iterable, List, Dict, Optional, Tuple, Set
 import concurrent.futures as cf
 import pandas as pd
 
-from .encode_client import encode_get, fetch_experiment, build_params, ENCODE_BASE
+from .encode_client import encode_get, fetch_experiment, build_params, ENCODE_BASE, EncodeNotFoundError
 from .postprocess import collapse_fastq_pairs
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -196,7 +196,11 @@ def experiments_to_df(experiments: Iterable[dict],
     def process_experiment(exp) -> List[dict]:
         local_rows: List[dict] = []
         exp_acc = exp.get("accession")
-        exp_full = fetch_experiment(exp_acc, auth=auth, embedded=True)
+        try:
+            exp_full = fetch_experiment(exp_acc, auth=auth, embedded=True)
+        except EncodeNotFoundError:
+            console.log(f"[yellow]{exp_acc} not found on ENCODE - skipping.[/yellow]")
+            return local_rows
         ctrl_list = expand_possible_controls(exp_full)
         ctrls_csv = ",".join(ctrl_list)
 
@@ -292,8 +296,17 @@ def search_accessions(accessions: List[str],
                       threads: int = 6,):
     auth = (auth_token, "") if auth_token else None
     clean_accessions = [acc.strip() for acc in accessions if acc.strip()]
+
+    def _fetch_or_none(acc: str):
+        try:
+            return fetch_experiment(acc, auth=auth)
+        except EncodeNotFoundError:
+            console.log(f"[yellow]{acc} not found on ENCODE - skipping.[/yellow]")
+            return None
+
     with ThreadPoolExecutor(max_workers=threads) as ex:
-        experiments = list(ex.map(lambda acc: fetch_experiment(acc, auth=auth), clean_accessions))
+        fetched = list(ex.map(_fetch_or_none, clean_accessions))
+    experiments = [exp for exp in fetched if exp is not None]
     return experiments_to_df(experiments, file_types=file_types, assembly=assembly, status=status,
                              auth_token=auth_token, progress=progress, threads=threads)
 

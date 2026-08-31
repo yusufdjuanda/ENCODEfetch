@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import concurrent.futures as cf
 
+import requests
 import rich_click as click
 from rich.progress import Progress
 
@@ -194,34 +195,38 @@ def main(accessions,
     outdir = Path(outdir); outdir.mkdir(parents=True, exist_ok=True)
 
     
-    if accessions:
-        acc_list, accession_source = parse_accessions_input(accessions)
-        source_label = f"file: {accessions}" if accession_source == "file" else "string"
-        click.echo(f"Parsed {len(acc_list)} accession(s) from {source_label}.")
+    try:
+        if accessions:
+            acc_list, accession_source = parse_accessions_input(accessions)
+            source_label = f"file: {accessions}" if accession_source == "file" else "string"
+            click.echo(f"Parsed {len(acc_list)} accession(s) from {source_label}.")
 
-        df, records = search_accessions(
-            acc_list,
-            file_types=file_types,
-            assembly=assembly,
-            status=status,
-            auth_token=auth_token,
-            progress=progress,
-            threads=threads,
-        )
+            df, records = search_accessions(
+                acc_list,
+                file_types=file_types,
+                assembly=assembly,
+                status=status,
+                auth_token=auth_token,
+                progress=progress,
+                threads=threads,
+            )
 
-    else:
-        df, records = search_experiments(assay_title=assay_title,
-                                         target_labels=list(target_label) if target_label else None,
-                                         organism=organism,
-                                         biosample=biosample,
-                                         file_types=file_types,
-                                         assembly=assembly,
-                                         status=status,
-                                         auth_token=auth_token,
-                                         progress=progress,
-                                         perturbed=perturbed,
-                                         series=series,
-                                         threads=threads)
+        else:
+            df, records = search_experiments(assay_title=assay_title,
+                                             target_labels=list(target_label) if target_label else None,
+                                             organism=organism,
+                                             biosample=biosample,
+                                             file_types=file_types,
+                                             assembly=assembly,
+                                             status=status,
+                                             auth_token=auth_token,
+                                             progress=progress,
+                                             perturbed=perturbed,
+                                             series=series,
+                                             threads=threads)
+    except requests.exceptions.RequestException as e:
+        click.echo(f"Failed to reach ENCODE: {e}", err=True)
+        raise SystemExit(1)
 
     if df.empty:
         click.echo("No files matched your filters.", err=True); return
