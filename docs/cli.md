@@ -54,12 +54,18 @@ encodefetch \
 | `--snakemake` | Write a Snakemake samplesheet for the selected assay. |
 | `--control-strategy` | Choose `all`, `pool`, `best`, or `first` for multiple controls in samplesheets. |
 | `--control-presence` | Filter cases by whether ENCODE metadata records a control relationship: `any` (default), `present`, or `none`. |
+| `--summary` / `--no-summary` | Print a compact terminal summary and write `summary.html`/`summary.json` reports (default: enabled). |
 | `--dry-run` | Deprecated alias for `--metadata-only`. |
 | `--version` | Show the installed version. |
 
 ## Notes
 
 The manifest always preserves all matched controls in `matched_control_experiments`. When ENCODE provides file-level control relationships, ENCODEfetch stores normalized control file accessions in `controlled_by_files`.
+
+`--summary` prints a compact KPI panel to the terminal (the last thing printed, after downloads/samplesheets if any) and writes two report files:
+
+- `summary.html`: a self-contained, dependency-free report (no external JS or fonts, so it renders the same on an offline cluster) with the selection criteria used, case/control experiment and file counts, download size, release date range, replication status for cases and controls, and a metadata breakdown split into "Per experiment" (Organism, Biosample, Target, Lab, Award, Platform, Donor Sex/Age/Life Stage/Ethnicity, Perturbed, Classification, Control Type - deduplicated by experiment) and "Per file" (File Format, Run Type, Output Type, Assembly, File Status - counted per manifest row, since these can genuinely vary within one experiment).
+- `summary.json`: the same statistics in machine-readable form, including the CLI filters that produced the report under a `"query"` key, for automated pipelines and reproducibility reporting.
 
 `--control-presence` filters cases based only on whether ENCODE metadata records a control relationship for the experiment (`matched_control_experiments`). It does not depend on `--file-type`, `--assembly`, or `--status`, so an experiment linked to a control is treated as having a control even if none of that control's files match the current file filters:
 

@@ -70,4 +70,4 @@ exclude = ["tests*", "docs*", "gitbook*", "examples*"]
 
 # Add non-Python assets logo in the package wheel
 [tool.setuptools.package-data]
-encodefetch = ["*.png", "*.pdf", "data/*"]
+encodefetch = ["*.png", "*.pdf", "data/*", "assets/*"]

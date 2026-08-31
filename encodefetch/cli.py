@@ -14,6 +14,7 @@ from .core import (
     write_snakemake_sheet,
 )
 from .postprocess import filter_control_presence
+from .summary import print_terminal_summary, write_html_summary, write_json_summary
 
 from . import __version__
 
@@ -40,7 +41,7 @@ click.rich_click.OPTION_GROUPS = {
         },
         {
             "name": "Output options",
-            "options": ["--outdir", "--nfcore", "--snakemake", "--control-strategy", "--control-presence"],
+            "options": ["--outdir", "--nfcore", "--snakemake", "--control-strategy", "--control-presence", "--summary"],
         },
         {
             "name": "Download options",
@@ -157,6 +158,9 @@ def parse_accessions_input(accessions: str) -> tuple[list[str], str]:
                   "'none': keep only cases with no linked control."
               ))
 
+@click.option("--summary/--no-summary", default=True,
+              help="Print a terminal summary and write summary.html/summary.json reports (default: enabled).")
+
 @click.version_option(version=__version__, prog_name="ENCODEfetch",
                       message="%(prog)s, version %(version)s")
 
@@ -181,6 +185,7 @@ def main(accessions,
          snakemake, 
          control_strategy,
          control_presence,
+         summary,
          max_retries, 
          chunk_size
          ):
@@ -240,6 +245,35 @@ def main(accessions,
             f.write(json.dumps(row) + "\n")
     click.echo(f"Wrote manifest: {manifest_tsv}")
     click.echo(f"Wrote metadata: {meta_jsonl}")
+
+    if summary:
+        query_params: dict[str, str] = {}
+        if accessions:
+            query_params["Accessions"] = accessions
+        else:
+            if assay_title:
+                query_params["Assay title"] = assay_title
+            if target_label:
+                query_params["Target label"] = ", ".join(target_label)
+            if organism:
+                query_params["Organism"] = organism
+            if biosample:
+                query_params["Biosample"] = biosample
+            if series:
+                query_params["Series"] = series
+            if perturbed is not None:
+                query_params["Perturbed"] = perturbed
+        query_params["File type"] = ", ".join(sorted(file_types)) if file_types else "any"
+        if assembly:
+            query_params["Assembly"] = assembly
+        query_params["Status"] = status
+        query_params["Control presence"] = control_presence
+
+        html_path = outdir / "summary.html"
+        write_html_summary(df, html_path, query_params=query_params)
+        click.echo(f"Wrote summary HTML: {html_path}")
+        json_path = outdir / "summary.json"
+        write_json_summary(df, json_path, query_params=query_params)
 
     def write_samplesheets():
         if nfcore:
@@ -396,3 +430,6 @@ def main(accessions,
         click.echo(f"Updated manifest with local paths: {outdir / 'manifest.tsv'}")
 
     write_samplesheets()
+
+    if summary:
+        print_terminal_summary(df, query_params=query_params)
