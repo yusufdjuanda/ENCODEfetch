@@ -105,9 +105,17 @@ def _unique_file_count(df: pd.DataFrame) -> int:
 
 def _download_size(df: pd.DataFrame) -> float:
     """Estimated download size from unique files, including R2."""
-    total = pd.to_numeric(_safe_col(df, "file_size"), errors="coerce").dropna().sum()
-    if "file_size_r2" in df.columns:
-        total += pd.to_numeric(df["file_size_r2"], errors="coerce").dropna().sum()
+    total = 0.0
+    if "file_accession" in df.columns:
+        unique = df.drop_duplicates(subset="file_accession")
+        total += pd.to_numeric(_safe_col(unique, "file_size"), errors="coerce").dropna().sum()
+    else:
+        total += pd.to_numeric(_safe_col(df, "file_size"), errors="coerce").dropna().sum()
+    if "file_accession_r2" in df.columns:
+        r2 = df[df["file_accession_r2"].astype(str).str.strip() != ""].drop_duplicates(
+            subset="file_accession_r2"
+        )
+        total += pd.to_numeric(_safe_col(r2, "file_size_r2"), errors="coerce").dropna().sum()
     return float(total)
 
 
@@ -639,7 +647,7 @@ footer a:hover{{text-decoration:underline}}
 """
 
 _PRETTY_UPPER_KEYS = {"File type"}
-_PRETTY_CAP_KEYS = {"Status", "Control presence", "Assembly", "Perturbed"}
+_PRETTY_CAP_KEYS = {"Status", "Control presence", "Perturbed"}
 
 
 def _pretty_query_value(key: str, value: str) -> str:
@@ -679,13 +687,11 @@ def _metric_html(value, label: str) -> str:
 
 def _pretty_date(raw: str) -> Tuple[str, str]:
     """Return (iso, display) for a date string, falling back to the raw value."""
-    for fmt in ("%Y-%m-%d",):
-        try:
-            dt = datetime.strptime(raw, fmt)
-            return raw, dt.strftime("%-d %b %Y")
-        except ValueError:
-            continue
-    return raw, raw
+    try:
+        dt = datetime.strptime(raw, "%Y-%m-%d")
+    except ValueError:
+        return raw, raw
+    return raw, f"{dt.day} {dt.strftime('%b %Y')}"
 
 
 def _bar_html(label: str, count: int, max_count: int) -> str:
